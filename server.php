@@ -31,8 +31,6 @@ if (isset($_GET['colaboradores'])) {
                     f.CHAPA as cp_matricula,
                     f.NOME as NOMECOLABORADOR
                 FROM [CorporeRM_JOB].[dbo].[PFUNC] as f
-                INNER JOIN [ssojob].[dbo].[tmpDistribuicaoEPI2] as d on d.cp_matricula = f.CHAPA
-                WHERE d.hty_id IN ( SELECT hty_id FROM [ssojob].[dbo].[fichageradas] )
                 ORDER BY f.NOME";
         
         error_log("Executando query: " . $sql);
