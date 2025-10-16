@@ -296,7 +296,7 @@ $(document).ready(function() {
                     previous: "Anterior"
                 }
             },
-            pageLength: 10,
+            pageLength: -1, // Mostra todos os registros
             lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "Todos"]],
             order: [[5, "asc"]] // Ordena por data de entrega (crescente)
         });
