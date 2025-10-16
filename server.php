@@ -28,10 +28,11 @@ if (isset($_GET['colaboradores'])) {
         
         // Query para buscar colaboradores distintos
         $sql = "SELECT DISTINCT
-                    f.CHAPA as cp_matricula,
-                    f.NOME as NOMECOLABORADOR
-                FROM [CorporeRM_JOB].[dbo].[PFUNC] as f
-                ORDER BY f.NOME";
+                    f.ite_integrationid as cp_matricula,
+                    f.ite_description as NOMECOLABORADOR
+                FROM [ssojob].[dbo].[tmpPIVOT_Item] as f
+                WHERE f.isg_id = '2253048'
+                ORDER BY f.ite_description";
         
         error_log("Executando query: " . $sql);
         $stmt = sqlsrv_query($conn, $sql);
@@ -77,16 +78,16 @@ if (isset($_GET['dadosColaborador']) && isset($_GET['chapa'])) {
                     [hty_id],
                     NOMECOLABORADOR,
                     cp_matricula,
-                    FUNCAO,
+                    it.cargo as 'FUNCAO',
                     tsk_lastexecutiondatehour,
                     cp_assinatura, 
                     cp_data, 
-                    f.CODCOLIGADA as 'coligada',
-                    ite_description,
+                    it.coligada,
+                    s1.ite_description,
                     cp_quantidade,
                     cp_ca,
                     entreguepor,
-                    preco
+                    s1.preco
                 FROM
                     (
                         SELECT
@@ -95,6 +96,8 @@ if (isset($_GET['dadosColaborador']) && isset($_GET['chapa'])) {
                             f.[tsk_id],
                             t.[tss_id],
                             it.[ite_id],
+                            it.[cargo],
+                            it.[coligada],
                             t.[tsk_lastexecutiondatehour],
                             it.[ite_description],
                             f.[cp_quantidade],
@@ -116,12 +119,12 @@ if (isset($_GET['dadosColaborador']) && isset($_GET['chapa'])) {
                             INNER JOIN [ssojob].[dbo].[tmpTask] as t on t.tsk_id = f.tsk_id
                             INNER JOIN [ssojob].[dbo].[tmpAgent] as a on a.age_id = t.age_id
                             INNER JOIN [ssojob].[dbo].[tmpPIVOT_Item] as it on it.ite_id = f.ite_id
+
                     ) as s1
-                    INNER JOIN [CorporeRM_JOB].[dbo].[PFUNC] as f on f.CHAPA = cp_matricula
-                    INNER JOIN [CorporeRM_JOB].[dbo].[PFUNCAO] as p on f.CODFUNCAO = p.CODIGO AND f.CODCOLIGADA = p.CODCOLIGADA
+                    INNER JOIN [ssojob].[dbo].[tmpPIVOT_Item] as it on it.ite_integrationid = cp_matricula
+                    -- INNER JOIN [CorporeRM_JOB].[dbo].[PFUNCAO] as p on f.CODFUNCAO = p.CODIGO AND f.CODCOLIGADA = p.CODCOLIGADA
                     WHERE
-                        [cp_matricula] LIKE ? 
-                        AND hty_id IN ( SELECT hty_id FROM [ssojob].[dbo].[fichageradas] )
+                        [cp_matricula] LIKE ?
                     ORDER BY cp_data ASC";
         
         $params = array($chapa);
@@ -184,16 +187,16 @@ if (isset($_POST['gerarPDF']) || (isset($_GET['gerarPDF']) && $_GET['gerarPDF'] 
                         [hty_id],
                         NOMECOLABORADOR,
                         cp_matricula,
-                        FUNCAO,
+                        it.cargo as 'FUNCAO',
                         tsk_lastexecutiondatehour,
                         cp_assinatura, 
                         cp_data, 
-                        f.CODCOLIGADA as 'coligada',
-                        ite_description,
+                        it.coligada,
+                        s1.ite_description,
                         cp_quantidade,
                         cp_ca,
                         entreguepor,
-                        preco
+                        s1.preco
                     FROM
                         (
                             SELECT
@@ -202,6 +205,8 @@ if (isset($_POST['gerarPDF']) || (isset($_GET['gerarPDF']) && $_GET['gerarPDF'] 
                                 f.[tsk_id],
                                 t.[tss_id],
                                 it.[ite_id],
+                                it.[cargo],
+                                it.[coligada],
                                 t.[tsk_lastexecutiondatehour],
                                 it.[ite_description],
                                 f.[cp_quantidade],
@@ -223,12 +228,12 @@ if (isset($_POST['gerarPDF']) || (isset($_GET['gerarPDF']) && $_GET['gerarPDF'] 
                                 INNER JOIN [ssojob].[dbo].[tmpTask] as t on t.tsk_id = f.tsk_id
                                 INNER JOIN [ssojob].[dbo].[tmpAgent] as a on a.age_id = t.age_id
                                 INNER JOIN [ssojob].[dbo].[tmpPIVOT_Item] as it on it.ite_id = f.ite_id
+
                         ) as s1
-                        INNER JOIN [CorporeRM_JOB].[dbo].[PFUNC] as f on f.CHAPA = cp_matricula
-                        INNER JOIN [CorporeRM_JOB].[dbo].[PFUNCAO] as p on f.CODFUNCAO = p.CODIGO AND f.CODCOLIGADA = p.CODCOLIGADA
+                        INNER JOIN [ssojob].[dbo].[tmpPIVOT_Item] as it on it.ite_integrationid = cp_matricula
+                        -- INNER JOIN [CorporeRM_JOB].[dbo].[PFUNCAO] as p on f.CODFUNCAO = p.CODIGO AND f.CODCOLIGADA = p.CODCOLIGADA
                     WHERE
-                        [cp_matricula] LIKE ? 
-                        AND hty_id IN ( SELECT hty_id FROM [ssojob].[dbo].[fichageradas] )
+                        [cp_matricula] LIKE ?
                     ORDER BY cp_data ASC";
             
             $params = array($dadosColaborador['cp_matricula']);
