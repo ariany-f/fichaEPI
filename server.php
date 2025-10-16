@@ -505,15 +505,14 @@ function gerarHTMLComprovante($dadosColaborador, $episData) {
         
         $assinaturaHtml = '';
         if ($assinatura && !empty($assinatura)) {
-            // Tenta usar a URL direta primeiro (funciona se GD estiver habilitado)
-            $assinaturaHtml = '<img src="' . htmlspecialchars($assinatura) . '" style="max-width: 80px; max-height: 40px;"/>';
-            
-            // Se quiser forçar base64 (mais compatível mas mais lento), descomente abaixo:
-            // $imageData = @file_get_contents($assinatura);
-            // if ($imageData !== false) {
-            //     $base64 = base64_encode($imageData);
-            //     $assinaturaHtml = '<img src="data:image/png;base64,' . $base64 . '" style="max-width: 80px; max-height: 40px;"/>';
-            // }
+            // Converte a assinatura para base64
+            $assinaturaBase64 = imagemParaBase64($assinatura);
+            if ($assinaturaBase64) {
+                $assinaturaHtml = '<img src="' . $assinaturaBase64 . '" style="max-width: 80px; max-height: 40px;"/>';
+            } else {
+                // Fallback se não conseguir baixar a imagem
+                $assinaturaHtml = '<div style="width: 80px; height: 40px; border: 1px solid #ccc; text-align: center; line-height: 40px; font-size: 10px;">Assinatura</div>';
+            }
         }
         
         $html .= '<tr>
@@ -534,16 +533,94 @@ function gerarHTMLComprovante($dadosColaborador, $episData) {
     return $html;
 }
 
+// Função helper para converter imagem URL para base64
+function imagemParaBase64($url) {
+    $logFile = __DIR__ . '/temp/debug_images.log';
+    $log = "\n=== " . date('Y-m-d H:i:s') . " === Tentando baixar: $url\n";
+    
+    try {
+        // Primeiro tenta com cURL (mais robusto)
+        if (function_exists('curl_init')) {
+            $log .= "cURL está disponível\n";
+            
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+            curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
+            
+            $imageData = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $error = curl_error($ch);
+            curl_close($ch);
+            
+            $log .= "cURL HTTP Code: $httpCode\n";
+            if ($error) {
+                $log .= "cURL Error: $error\n";
+            }
+            
+            if ($httpCode === 200 && $imageData !== false && !empty($imageData)) {
+                $log .= "✓ SUCESSO! Tamanho: " . strlen($imageData) . " bytes\n";
+                
+                // Detecta o tipo MIME da imagem
+                $finfo = new finfo(FILEINFO_MIME_TYPE);
+                $mimeType = $finfo->buffer($imageData);
+                $log .= "Tipo MIME detectado: $mimeType\n";
+                
+                file_put_contents($logFile, $log, FILE_APPEND);
+                return 'data:' . $mimeType . ';base64,' . base64_encode($imageData);
+            } else {
+                $log .= "✗ cURL falhou: HTTP $httpCode, dados vazios? " . (empty($imageData) ? 'SIM' : 'NÃO') . "\n";
+            }
+        } else {
+            $log .= "✗ cURL NÃO disponível\n";
+        }
+        
+        // Fallback: tenta com file_get_contents
+        $log .= "Tentando file_get_contents...\n";
+        $imageData = @file_get_contents($url);
+        if ($imageData !== false && !empty($imageData)) {
+            $log .= "✓ file_get_contents sucesso! Tamanho: " . strlen($imageData) . " bytes\n";
+            
+            // Detecta o tipo MIME da imagem
+            $finfo = new finfo(FILEINFO_MIME_TYPE);
+            $mimeType = $finfo->buffer($imageData);
+            $log .= "Tipo MIME detectado: $mimeType\n";
+            
+            file_put_contents($logFile, $log, FILE_APPEND);
+            return 'data:' . $mimeType . ';base64,' . base64_encode($imageData);
+        } else {
+            $log .= "✗ file_get_contents falhou\n";
+        }
+        
+    } catch (Exception $e) {
+        $log .= "✗ EXCEÇÃO: " . $e->getMessage() . "\n";
+    }
+    
+    $log .= "✗✗✗ FALHA TOTAL\n";
+    file_put_contents($logFile, $log, FILE_APPEND);
+    return '';
+}
+
 // Função para gerar logo do header baseado na coligada
 function gerarHeaderLogo($dadosColaborador) {
     $coligada = isset($dadosColaborador['coligada']) ? $dadosColaborador['coligada'] : '1';
     
     if ($coligada == '2') {
-        return '<img src="https://whitelabel.umov.me/tecsadiag2017/CENTER_LOGO?1503957675071" width="80px" height="50px" style="vertical-align: middle;" />'; // Reduzido mais e alinhado
-        } else {
+        $logoUrl = 'https://whitelabel.umov.me/tecsadiag2017/CENTER_LOGO?1503957675071';
+    } else {
         // Coligada 1 (padrão)
-        return '<img src="https://whitelabel.umov.me/ssojob/CENTER_LOGO?1663176199143" width="80px" height="50px" style="vertical-align: middle;" />'; // Reduzido mais e alinhado
+        $logoUrl = 'https://whitelabel.umov.me/ssojob/CENTER_LOGO?1663176199143';
     }
+    
+    $logoBase64 = imagemParaBase64($logoUrl);
+    if ($logoBase64) {
+        return '<img src="' . $logoBase64 . '" width="80px" height="50px" style="vertical-align: middle;" />';
+    }
+    return ''; // Retorna vazio se não conseguir carregar
 }
 
 // Função para gerar informações do header baseado na coligada
