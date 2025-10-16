@@ -164,6 +164,11 @@ if (isset($_POST['gerarPDF']) || (isset($_GET['gerarPDF']) && $_GET['gerarPDF'] 
         // Debug: verifica se os dados estão chegando
         error_log("PDF endpoint chamado. POST: " . print_r($_POST, true));
         
+        // Lê o corpo da requisição se $_POST estiver vazio
+        if (empty($_POST['dadosColaborador']) || empty($_POST['registrosEPIs'])) {
+            parse_str(file_get_contents("php://input"), $_POST);
+        }
+        
         $dadosColaborador = json_decode($_POST['dadosColaborador'], true);
         $registrosEPIs = json_decode($_POST['registrosEPIs'], true);
         
@@ -643,6 +648,9 @@ function gerarHeaderInfo($dadosColaborador) {
 // Função para gerar PDF usando mPDF
 function gerarPDF($html) {
     try {
+        // Aumenta o limite do PCRE para HTML grandes
+        ini_set('pcre.backtrack_limit', '5000000');
+        
         // Cria uma instância do mPDF
         $mpdf = new \Mpdf\Mpdf([
             'mode' => 'utf-8',
@@ -663,8 +671,20 @@ function gerarPDF($html) {
         $mpdf->SetCreator('Sistema SSO');
         $mpdf->SetSubject('Comprovante de Entrega de EPI');
         
-        // Adiciona o HTML ao PDF
-        $mpdf->WriteHTML($html);
+        // Separa CSS do HTML para processar em chunks menores
+        preg_match('/<style>(.*?)<\/style>/s', $html, $styleMatches);
+        $css = isset($styleMatches[1]) ? $styleMatches[1] : '';
+        
+        // Remove a tag style do HTML
+        $htmlSemStyle = preg_replace('/<style>.*?<\/style>/s', '', $html);
+        
+        // Escreve o CSS primeiro
+        if ($css) {
+            $mpdf->WriteHTML($css, \Mpdf\HTMLParserMode::HEADER_CSS);
+        }
+        
+        // Escreve o HTML
+        $mpdf->WriteHTML($htmlSemStyle, \Mpdf\HTMLParserMode::HTML_BODY);
         
         // Gera o PDF como string
         $pdfContent = $mpdf->Output('', 'S');
