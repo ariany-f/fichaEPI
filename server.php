@@ -503,9 +503,18 @@ function gerarHTMLComprovante($dadosColaborador, $episData) {
             $assinatura = isset($dadosColaborador['cp_assinatura']) ? $dadosColaborador['cp_assinatura'] : '';
         }
         
-        $assinaturaHtml = $assinatura ? 
-            '<img src="' . htmlspecialchars($assinatura) . '" style="max-width: 80px; max-height: 40px;"/>' : 
-            '';
+        $assinaturaHtml = '';
+        if ($assinatura && !empty($assinatura)) {
+            // Tenta usar a URL direta primeiro (funciona se GD estiver habilitado)
+            $assinaturaHtml = '<img src="' . htmlspecialchars($assinatura) . '" style="max-width: 80px; max-height: 40px;"/>';
+            
+            // Se quiser forçar base64 (mais compatível mas mais lento), descomente abaixo:
+            // $imageData = @file_get_contents($assinatura);
+            // if ($imageData !== false) {
+            //     $base64 = base64_encode($imageData);
+            //     $assinaturaHtml = '<img src="data:image/png;base64,' . $base64 . '" style="max-width: 80px; max-height: 40px;"/>';
+            // }
+        }
         
         $html .= '<tr>
                     <td align="center">' . htmlspecialchars($dataEntrega) . '</td>
