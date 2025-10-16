@@ -1,0 +1,23 @@
+# Arquivos temporários
+temp/
+
+# Logs
+*.log
+
+# Arquivos de sistema
+.DS_Store
+Thumbs.db
+
+# Arquivos de IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Dependências
+vendor/
+node_modules/
+
+# Arquivos de configuração local
+.env
+config.local.php
